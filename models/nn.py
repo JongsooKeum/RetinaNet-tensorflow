@@ -119,7 +119,16 @@ class RetinaNet(DetectNet):
         return d
 
     def _build_loss(self, **kwargs):
-        print('hi')
+        r_alpha = kwargs.pop('r_alpha', 1)
+        regress_boxes = self.logits[:, :4]
+        gt_regress_boxes = self.y[:, :5]
+        conf_boxes = self.logits[:, 4:4 + self.num_classes + 1]
+        gt_conf_boxes = self.y[:, 5:]
+
+        conf_loss = focal_loss(conf_boxes, gt_conf_boxes)
+        regress_loss = smooth_l1_loss(regress_boxes, gt_regress_boxes)
+        total_loss = conf_loss + r_alpha * regress_loss
+        return total_loss
 
     def predict(self, sess, dataset, verbose=False, **kwargs):
-        print('pre')
+        pred_y = sess.run(self.pred, feed_dict={self.x: X})
