@@ -10,9 +10,6 @@ from learning.evaluators import RecallEvaluator as Evaluator
 root_dir = os.path.join('data/face/') # FIXME
 trainval_dir = os.path.join(root_dir, 'train')
 
-# Load anchors
-anchors = dataset.load_json(os.path.join(trainval_dir, 'anchors.json'))
-
 # Set image size and number of class
 IM_SIZE = (512, 512)
 NUM_CLASSES = 1
@@ -43,7 +40,7 @@ graph = tf.get_default_graph()
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 
-model = ConvNet([IM_SIZE[0], IM_SIZE[1], 3], NUM_CLASSES, anchors, grid_size=(IM_SIZE[0]//32, IM_SIZE[1]//32))
+model = ConvNet([IM_SIZE[0], IM_SIZE[1], 3], NUM_CLASSES, None)
 
 evaluator = Evaluator()
 optimizer = Optimizer(model, train_set, evaluator, val_set=val_set, **hp_d)

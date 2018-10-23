@@ -87,7 +87,6 @@ class RetinaNet(DetectNet):
     def __init__(self, input_shape, num_classes, anchors, **kwargs):
         self.anchors = anchors_for_shape(input_shape[:2]) if anchors is None else anchors
         super(RetinaNet, self).__init__(input_shape, num_classes, **kwargs)
-        self.y = tf.placeholder(tf.float32, [None, self.pred.shape[0], self.pred.shape[1] + 1])
         # self.pred_y = self._build_pred_y(self)
         self.pred_y = self.pred
 
@@ -157,6 +156,7 @@ class RetinaNet(DetectNet):
 
             d['logits'] = tf.concat((d['loc_head'], d['cls_head']), axis=2)
             d['pred'] = tf.concat((d['loc_head'], tf.nn.softmax(d['cls_head'], axis=-1)), axis=2)
+            self.y = tf.placeholder(tf.float32, [None, self.d['pred'].shape[0], self.d['pred'].shape[1] + 1])
 
         return d
 
