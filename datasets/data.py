@@ -13,8 +13,8 @@ def read_data(data_dir, image_size, no_label=False):
     im_dir = os.path.join(data_dir, 'images')
     class_map_path = os.path.join(data_dir, 'classes.json')
     class_map = load_json(class_map_path)
-    anchors = anchors_for_shape(im_shape)
-    num_classes = len(class_map)
+    anchors = anchors_for_shape(image_size)
+    num_classes = len(class_map) + 1
     ih, iw = image_size
     im_paths = []
     for ext in IM_EXTENSIONS:
@@ -42,7 +42,7 @@ def read_data(data_dir, image_size, no_label=False):
         anno_path = os.path.join(anno_dir, '{}.anno'.format(name))
         anno = load_json(anno_path)
         bboxes = []
-        for c_idx, c_name in self.class_map.items():
+        for c_idx, c_name in class_map.items():
             if c_name not in anno:
                 continue
             for x_min, y_min, x_max, y_max in anno[c_name]:
@@ -50,15 +50,15 @@ def read_data(data_dir, image_size, no_label=False):
                 x_min, y_min, x_max, y_max = x_min / ow, y_min / oh, x_max/ ow, y_max / oh
                 bboxes.append([x_min, y_min, x_max, y_max, int(c_idx)+1])
             bboxes = np.array(bboxes)
-            bboxes = np array([iw, ih, iw, ih, 1], dtype=np.float32) * bboxes
+            bboxes = np.array([iw, ih, iw, ih, 1], dtype=np.float32) * bboxes
 
-            labels, annotations = anchor_targets_bbox(im.shape, bboxes, num_classes, anchors)
+            b_labels, annotations = anchor_targets_bbox(im.shape, bboxes, num_classes, anchors)
             regression = bbox_transform(anchors, annotations)
 
-            anchor_states = np.max(labels[:,1:], axis=1, keepdims=True)
+            anchor_states = np.max(b_labels[:,1:], axis=1, keepdims=True)
             regression = np.append(regression, anchor_states, axis=1)
 
-            label = np.array(np.append(regression, labels, axis=1), dtype=np.float32)
+            label = np.array(np.append(regression, b_labels, axis=1), dtype=np.float32)
         labels.append(label)
 
     X_set = np.array(images, dtype=np.float32)
