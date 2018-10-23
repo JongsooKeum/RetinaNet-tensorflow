@@ -1,6 +1,6 @@
 from abc import abstractmethod, abstractproperty, ABCMeta
 import numpy as np
-from learning.utils import convert_boxes, predict_nms_boxes, cal_recall
+from learning.utils import get_boxes, cal_recall
 
 class Evaluator(metaclass=ABCMeta):
     """Base class for evaluation functions."""
@@ -59,12 +59,8 @@ class RecallEvaluator(Evaluator):
 
     def score(self, y_true, y_pred, **kwargs):
         """Compute Recall for a given predicted bboxes"""
-        nms_flag = kwargs.pop('nms_flag', True)
-        if nms_flag:
-            bboxes = predict_nms_boxes(y_pred)
-        else:
-            bboxes = convert_boxes(y_pred)
-        gt_bboxes = convert_boxes(y_true)
+        bpxes = get_boxes(y_pred)
+        gt_bboxes = get_boxes(y_true)
         score = cal_recall(gt_bboxes, bboxes)
         return score
 
