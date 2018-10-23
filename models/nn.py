@@ -2,6 +2,8 @@ from builders import frontend_builder
 import tensorflow as tf
 from abc import abstractmethod, ABCMeta
 from models.layers import build_head_cls, build_head_loc, conv_layer, resize_to_target
+from models.utils import smooth_l1_loss, focal_loss, bbox_transform_inv
+from datasets.utils import anchors_for_shape
 
 class DetectNet(metaclass=ABCMeta):
     """Base class for Convolutional Neural Networks for detection."""
@@ -17,6 +19,7 @@ class DetectNet(metaclass=ABCMeta):
         self.num_classes = num_classes
         self.d = self._build_model(**kwargs)
         self.logits = self.d['logits']
+        self.pred = self.d['pred']
         self.loss = self._build_loss(**kwargs)
 
     @abstractmethod
@@ -35,20 +38,57 @@ class DetectNet(metaclass=ABCMeta):
         """
         pass
 
-    @abstractmethod
     def predict(self, sess, dataset, verbose=False, **kwargs):
         """
-        Predict bounding box.
-        This should be implemented.
+        Make predictions for the given dataset.
+        :param sess: tf.Session.
+        :param dataset: DataSet.
+        :param verbose: bool, whether to print details during prediction.
+        :param kwargs: dict, extra arguments for prediction.
+                -batch_size: int, batch size for each iteration.
+        :return _y_pred: np.ndarray, shape: shape of self.pred
         """
-        pass
+
+        batch_size = kwargs.pop('batch_size', 16)
+
+        num_classes = self.num_classes
+        pred_size = dataset.num_examples
+        num_steps = pred_size // batch_size
+        flag = int(bool(pred_size % batch_size))
+        if verbose:
+            print('Running prediction loop...')
+
+        # Start prediction loop
+        _y_pred = []
+        start_time = time.time()
+        for i in range(num_steps + flag):
+            if i == num_steps and flag:
+                _batch_size = pred_size - num_steps * batch_size
+            else:
+                _batch_size = batch_size
+            X, _ = dataset.next_batch(_batch_size, shuffle=False)
+
+            # Compute predictions
+            y_pred = sess.run(self.pred_y, feed_dict={
+                              self.X: X, self.is_train: False})
+
+            _y_pred.append(y_pred)
+
+        if verbose:
+            print('Total prediction time(sec): {}'.format(
+                time.time() - start_time))
+
+        _y_pred = np.concatenate(_y_pred, axis=0)
+        return _y_pred
 
 class RetinaNet(DetectNet):
     """RetinaNet Class"""
 
     def __init__(self, input_shape, num_classes, anchors, **kwargs):
-        #self.anchors = anchors_for_shape(input_shape[-2]) if anchors is None else anchors
+        self.anchors = anchors_for_shape(input_shape[:2]) if anchors is None else anchors
         super(RetinaNet, self).__init__(input_shape, num_classes, **kwargs)
+        self.y = tf.placeholder(tf.float32, [None, self.pred.shape[0], self.pred.shape[1] + 1])
+        self.pred_y = self.pred
 
     def _build_model(self, **kwargs):
         d = dict()
@@ -58,7 +98,7 @@ class RetinaNet(DetectNet):
         num_anchors = kwargs.pop('num_anchors', 9)
 
         if pretrain:
-            logits, end_points, frontend_scope, init_fn = frontend_builder.build_frontend(self.X, frontend)
+            logits, end_points, frontend_scope, d['init_fn'] = frontend_builder.build_frontend(self.X, frontend)
             convs = [end_points['pool5'], end_points['pool4'], end_points['pool3'], end_points['pool2']]
         else:
             #TODO build convNet
@@ -115,7 +155,8 @@ class RetinaNet(DetectNet):
                                        d['flat_loc_head7']), axis=1)
 
             d['logits'] = tf.concat((d['loc_head'], d['cls_head']), axis=2)
-
+            d['pred'] = tf.concat((d['loc_head'], tf.nn.softmax(d['cls_head'], axis=-1)), axis=2)
+            from IPython import embed; embed();
         return d
 
     def _build_loss(self, **kwargs):
@@ -130,5 +171,9 @@ class RetinaNet(DetectNet):
         total_loss = conf_loss + r_alpha * regress_loss
         return total_loss
 
-    def predict(self, sess, dataset, verbose=False, **kwargs):
-        pred_y = sess.run(self.pred, feed_dict={self.x: X})
+    def _build_pred_y(self, **kwargs):
+        pred_y = self.pred
+        anchors = self.anchors
+        regressions  = pred_y[:, :, :4]
+        regressions = tf.py_func(bbox_transform_inv, [anchors, regressions], tf.float32)
+        self.pred_y = tf.concat((regressions, pred_y[:, :, 4:]), axis=2)
