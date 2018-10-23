@@ -88,6 +88,7 @@ class RetinaNet(DetectNet):
         self.anchors = anchors_for_shape(input_shape[:2]) if anchors is None else anchors
         super(RetinaNet, self).__init__(input_shape, num_classes, **kwargs)
         self.y = tf.placeholder(tf.float32, [None, self.pred.shape[0], self.pred.shape[1] + 1])
+        # self.pred_y = self._build_pred_y(self)
         self.pred_y = self.pred
 
     def _build_model(self, **kwargs):
@@ -156,7 +157,7 @@ class RetinaNet(DetectNet):
 
             d['logits'] = tf.concat((d['loc_head'], d['cls_head']), axis=2)
             d['pred'] = tf.concat((d['loc_head'], tf.nn.softmax(d['cls_head'], axis=-1)), axis=2)
-            from IPython import embed; embed();
+
         return d
 
     def _build_loss(self, **kwargs):
@@ -171,9 +172,8 @@ class RetinaNet(DetectNet):
         total_loss = conf_loss + r_alpha * regress_loss
         return total_loss
 
-    def _build_pred_y(self, **kwargs):
-        pred_y = self.pred
-        anchors = self.anchors
-        regressions  = pred_y[:, :, :4]
-        regressions = tf.py_func(bbox_transform_inv, [anchors, regressions], tf.float32)
-        self.pred_y = tf.concat((regressions, pred_y[:, :, 4:]), axis=2)
+    # def _build_pred_y(self, **kwargs):
+    #     regressions  = self.pred[:, :, :4]
+    #     regressions = tf.py_func(bbox_transform_inv, [self.anchors, regressions], tf.float32)
+    #     pred_y = tf.concat((regressions, self.pred[:, :, 4:]), axis=2)
+    #     return pred_y
