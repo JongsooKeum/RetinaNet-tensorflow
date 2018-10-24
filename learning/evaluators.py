@@ -57,10 +57,10 @@ class RecallEvaluator(Evaluator):
         """The mode for performance score."""
         return 'max'
 
-    def score(self, y_true, y_pred, **kwargs):
+    def score(self, y_true, y_pred, model, **kwargs):
         """Compute Recall for a given predicted bboxes"""
-        bpxes = get_boxes(y_pred)
-        gt_bboxes = get_boxes(y_true)
+        bboxes = get_boxes(y_pred, model.anchors, gt=False)
+        gt_bboxes = get_boxes(y_true, model.anchors)
         score = cal_recall(gt_bboxes, bboxes)
         return score
 

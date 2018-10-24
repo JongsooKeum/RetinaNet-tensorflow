@@ -88,9 +88,11 @@ class Optimizer(metaclass=ABCMeta):
                 - nms_flag: bool, whether to do non maximum supression(nms) for evaluation.
         :return train_results: dict, containing detailed results of training.
         """
+        pretrain = kwargs.pop('pretrain', False)
         saver = tf.train.Saver()
         sess.run(tf.global_variables_initializer())  # initialize all weights
-
+        if pretrain:
+            self.model.d['init_fn'](sess)
         train_results = dict()
         train_size = self.train_set.num_examples
         num_steps_per_epoch = train_size // self.batch_size
@@ -112,7 +114,7 @@ class Optimizer(metaclass=ABCMeta):
             if (i) % num_steps_per_epoch == 0:
                 # Evaluate model with current minibatch, from training set
                 step_score = self.evaluator.score(
-                    step_y_true, step_y_pred, **kwargs)
+                    step_y_true, step_y_pred, self.model, **kwargs)
                 step_scores.append(step_score)
 
                 # If validation set is initially given, use if for evaluation
@@ -121,7 +123,7 @@ class Optimizer(metaclass=ABCMeta):
                     eval_y_pred = self.model.predict(
                         sess, self.val_set, verbose=False, **kwargs)
                     eval_score = self.evaluator.score(
-                        self.val_set.labels, eval_y_pred, **kwargs)
+                        self.val_set.labels, eval_y_pred, self.model, **kwargs)
                     eval_scores.append(eval_score)
 
                     if verbose:

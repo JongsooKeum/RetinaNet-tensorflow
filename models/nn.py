@@ -1,3 +1,5 @@
+import time
+import numpy as np
 from builders import frontend_builder
 import tensorflow as tf
 from abc import abstractmethod, ABCMeta
@@ -156,16 +158,16 @@ class RetinaNet(DetectNet):
 
             d['logits'] = tf.concat((d['loc_head'], d['cls_head']), axis=2)
             d['pred'] = tf.concat((d['loc_head'], tf.nn.softmax(d['cls_head'], axis=-1)), axis=2)
-            self.y = tf.placeholder(tf.float32, [None, self.d['pred'].shape[0], self.d['pred'].shape[1] + 1])
+            self.y = tf.placeholder(tf.float32, [None, d['pred'].shape[1], d['pred'].shape[2] + 1])
 
         return d
 
     def _build_loss(self, **kwargs):
         r_alpha = kwargs.pop('r_alpha', 1)
-        regress_boxes = self.logits[:, :4]
-        gt_regress_boxes = self.y[:, :5]
-        conf_boxes = self.logits[:, 4:4 + self.num_classes + 1]
-        gt_conf_boxes = self.y[:, 5:]
+        regress_boxes = self.logits[:, :, :4]
+        gt_regress_boxes = self.y[:, :, :5]
+        conf_boxes = self.logits[:, :, 4:4 + self.num_classes + 1]
+        gt_conf_boxes = self.y[:, :, 5:]
 
         conf_loss = focal_loss(conf_boxes, gt_conf_boxes)
         regress_loss = smooth_l1_loss(regress_boxes, gt_regress_boxes)
