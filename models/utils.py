@@ -2,6 +2,8 @@ import tensorflow as tf
 import numpy as np
 
 def focal_loss(y_pred, y_true, alpha=0.25, gamma=2.0):
+    y_true, y_pred = [x[:, :, 4:] for x in [y_true, y_pred]]
+
     total_state = tf.reduce_max(y_true, axis=-1, keepdims=True)
     total_state = tf.cast(tf.math.equal(total_state, 1), dtype=tf.float32)
     pos_state = tf.reduce_max(y_true[..., 1:], axis=-1, keepdims=True)
@@ -22,10 +24,11 @@ def focal_loss(y_pred, y_true, alpha=0.25, gamma=2.0):
 
 def smooth_l1_loss(y_pred, y_true, sigma=3.0):
     sigma2 = sigma * sigma
+    anchor_state = tf.reduce_max(y_true[:, :, 5:], axis=-1, keepdims=True)
+    y_true, y_pred = [x[:, :, :4] for x in [y_true, y_pred]]
 
     regression = y_pred
     regression_target = y_true[:, :, :4]
-    anchor_state = y_true[:, :, 4:5]
     pos_state = tf.cast(tf.math.equal(anchor_state, 1), dtype=tf.float32)
     divisor = tf.reduce_sum(pos_state)
     divisor = tf.clip_by_value(divisor, 1, divisor)

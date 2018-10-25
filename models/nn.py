@@ -86,7 +86,7 @@ class DetectNet(metaclass=ABCMeta):
 class RetinaNet(DetectNet):
     """RetinaNet Class"""
 
-    def __init__(self, input_shape, num_classes, anchors, **kwargs):
+    def __init__(self, input_shape, num_classes, anchors=None, **kwargs):
         self.anchors = anchors_for_shape(input_shape[:2]) if anchors is None else anchors
         self.y = tf.placeholder(tf.float32, [None, self.anchors.shape[0], 5 + num_classes])
         super(RetinaNet, self).__init__(input_shape, num_classes, **kwargs)
@@ -158,19 +158,14 @@ class RetinaNet(DetectNet):
                                        d['flat_loc_head7']), axis=1)
 
             d['logits'] = tf.concat((d['loc_head'], d['cls_head']), axis=2)
-            d['pred'] = tf.concat((d['loc_head'], tf.nn.softmax(d['cls_head'], axis=-1)), axis=2)
+            d['pred'] = tf.concat((d['loc_head'], tf.nn.sigmoid(d['cls_head'])), axis=2)
 
         return d
 
     def _build_loss(self, **kwargs):
         r_alpha = kwargs.pop('r_alpha', 1)
-        regress_boxes = self.logits[:, :, :4]
-        gt_regress_boxes = self.y[:, :, :5]
-        conf_boxes = self.logits[:, :, 4:]
-        gt_conf_boxes = self.y[:, :, 5:]
-
-        conf_loss = focal_loss(conf_boxes, gt_conf_boxes)
-        regress_loss = smooth_l1_loss(regress_boxes, gt_regress_boxes)
+        conf_loss = focal_loss(self.logits, self.y)
+        regress_loss = smooth_l1_loss(self.logits, self.y)
         total_loss = conf_loss + r_alpha * regress_loss
         return total_loss
 

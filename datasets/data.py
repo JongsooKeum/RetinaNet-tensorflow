@@ -42,6 +42,7 @@ def read_data(data_dir, image_size, no_label=False):
         anno_path = os.path.join(anno_dir, '{}.anno'.format(name))
         anno = load_json(anno_path)
         bboxes = []
+
         for c_idx, c_name in class_map.items():
             if c_name not in anno:
                 continue
@@ -54,10 +55,6 @@ def read_data(data_dir, image_size, no_label=False):
 
             b_labels, annotations = anchor_targets_bbox(im.shape, bboxes, num_classes, anchors)
             regression = bbox_transform(anchors, annotations)
-
-            anchor_states = np.max(b_labels[:,1:], axis=1, keepdims=True)
-            regression = np.append(regression, anchor_states, axis=1)
-
             label = np.array(np.append(regression, b_labels, axis=1), dtype=np.float32)
         labels.append(label)
 
