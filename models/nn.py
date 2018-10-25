@@ -1,11 +1,15 @@
 import time
 import numpy as np
+import os
 from builders import frontend_builder
 import tensorflow as tf
+from tensorflow.contrib.slim.nets import resnet_v2 as resnet_v2
 from abc import abstractmethod, ABCMeta
 from models.layers import build_head_cls, build_head_loc, conv_layer, resize_to_target
 from models.utils import smooth_l1_loss, focal_loss, bbox_transform_inv
 from datasets.utils import anchors_for_shape
+
+slim = tf.contrib.slim
 
 class DetectNet(metaclass=ABCMeta):
     """Base class for Convolutional Neural Networks for detection."""
@@ -18,7 +22,8 @@ class DetectNet(metaclass=ABCMeta):
         """
         self.X = tf.placeholder(tf.float32, [None] + input_shape)
         self.is_train = tf.placeholder(tf.bool)
-        self.num_classes = num_classes
+        self.num_classes = num_classes + 1
+        # self.num_classes = num_classes
         self.d = self._build_model(**kwargs)
         self.logits = self.d['logits']
         self.pred = self.d['pred']
@@ -97,51 +102,55 @@ class RetinaNet(DetectNet):
         d = dict()
         num_classes = self.num_classes
         pretrain = kwargs.pop('pretrain', True)
-        frontend = kwargs.pop('frontend', 'ResNet50')
+        frontend = kwargs.pop('frontend', 'resnet_v2_50')
         num_anchors = kwargs.pop('num_anchors', 9)
 
         if pretrain:
-            logits, end_points, frontend_scope, d['init_fn'] = frontend_builder.build_frontend(self.X, frontend)
-            convs = [end_points['pool5'], end_points['pool4'], end_points['pool3'], end_points['pool2']]
+            frontend_dir = os.path.join('pretrained_models', '{}.ckpt'.format(frontend))
+            with slim.arg_scope(resnet_v2.resnet_arg_scope()):
+                logits, end_points = resnet_v2.resnet_v2_50(self.X, is_training=self.is_train)
+                d['init_fn'] = slim.assign_from_checkpoint_fn(model_path=frontend_dir,
+                                                          var_list=slim.get_model_variables(frontend))
+            convs = [end_points[frontend + '/block{}'.format(x)] for x in [4, 2, 1]]
         else:
             #TODO build convNet
             raise NotImplementedError("Build own convNet!")
 
         with tf.variable_scope('layer5'):
             d['s_5'] = conv_layer(convs[0], 256, (1, 1), (1, 1))
-            d['cls_head5'] = build_head_cls(d['s_5'], num_anchors, num_classes+1)
+            d['cls_head5'] = build_head_cls(d['s_5'], num_anchors, num_classes)
             d['loc_head5'] = build_head_loc(d['s_5'], num_anchors)
-            d['flat_cls_head5'] = tf.reshape(d['cls_head5'], (tf.shape(d['cls_head5'])[0], -1, num_classes+1))
+            d['flat_cls_head5'] = tf.reshape(d['cls_head5'], (tf.shape(d['cls_head5'])[0], -1, num_classes))
             d['flat_loc_head5'] = tf.reshape(d['loc_head5'], (tf.shape(d['loc_head5'])[0], -1, 4))
 
         with tf.variable_scope('layer6'):
             d['s_6'] = conv_layer(d['s_5'], 256, (3, 3), (2, 2))
-            d['cls_head6'] = build_head_cls(d['s_6'], num_anchors, num_classes+1)
+            d['cls_head6'] = build_head_cls(d['s_6'], num_anchors, num_classes)
             d['loc_head6'] = build_head_loc(d['s_6'], num_anchors)
-            d['flat_cls_head6'] = tf.reshape(d['cls_head6'], (tf.shape(d['cls_head6'])[0], -1, num_classes+1))
+            d['flat_cls_head6'] = tf.reshape(d['cls_head6'], (tf.shape(d['cls_head6'])[0], -1, num_classes))
             d['flat_loc_head6'] = tf.reshape(d['loc_head6'], (tf.shape(d['loc_head6'])[0], -1, 4))
 
         with tf.variable_scope('layer7'):
             d['s_7'] = conv_layer(tf.nn.relu(d['s_6']), 256, (3, 3), (2, 2))
-            d['cls_head7'] = build_head_cls(d['s_7'], num_anchors, num_classes+1)
+            d['cls_head7'] = build_head_cls(d['s_7'], num_anchors, num_classes)
             d['loc_head7'] = build_head_loc(d['s_7'], num_anchors)
-            d['flat_cls_head7'] = tf.reshape(d['cls_head7'], (tf.shape(d['cls_head7'])[0], -1, num_classes+1))
+            d['flat_cls_head7'] = tf.reshape(d['cls_head7'], (tf.shape(d['cls_head7'])[0], -1, num_classes))
             d['flat_loc_head7'] = tf.reshape(d['loc_head7'], (tf.shape(d['loc_head7'])[0], -1, 4))
 
         with tf.variable_scope('layer4'):
             d['up4'] = resize_to_target(d['s_5'], convs[1])
             d['s_4'] = conv_layer(convs[1], 256, (1, 1), (1, 1)) + d['up4']
-            d['cls_head4'] = build_head_cls(d['s_4'], num_anchors, num_classes+1)
+            d['cls_head4'] = build_head_cls(d['s_4'], num_anchors, num_classes)
             d['loc_head4'] = build_head_loc(d['s_4'], num_anchors)
-            d['flat_cls_head4'] = tf.reshape(d['cls_head4'], (tf.shape(d['cls_head4'])[0], -1, num_classes+1))
+            d['flat_cls_head4'] = tf.reshape(d['cls_head4'], (tf.shape(d['cls_head4'])[0], -1, num_classes))
             d['flat_loc_head4'] = tf.reshape(d['loc_head4'], (tf.shape(d['loc_head4'])[0], -1, 4))
 
         with tf.variable_scope('layer3'):
             d['up3'] = resize_to_target(d['s_4'], convs[2])
             d['s_3'] = conv_layer(convs[2], 256, (1, 1), (1, 1)) + d['up3']
-            d['cls_head3'] = build_head_cls(d['s_3'], num_anchors, num_classes+1)
+            d['cls_head3'] = build_head_cls(d['s_3'], num_anchors, num_classes)
             d['loc_head3'] = build_head_loc(d['s_3'], num_anchors)
-            d['flat_cls_head3'] = tf.reshape(d['cls_head3'], (tf.shape(d['cls_head3'])[0], -1, num_classes+1))
+            d['flat_cls_head3'] = tf.reshape(d['cls_head3'], (tf.shape(d['cls_head3'])[0], -1, num_classes))
             d['flat_loc_head3'] = tf.reshape(d['loc_head3'], (tf.shape(d['loc_head3'])[0], -1, 4))
 
         with tf.variable_scope('head'):
@@ -158,15 +167,20 @@ class RetinaNet(DetectNet):
                                        d['flat_loc_head7']), axis=1)
 
             d['logits'] = tf.concat((d['loc_head'], d['cls_head']), axis=2)
-            d['pred'] = tf.concat((d['loc_head'], tf.nn.sigmoid(d['cls_head'])), axis=2)
+            # d['pred'] = tf.concat((d['loc_head'], tf.nn.sigmoid(d['cls_head'])), axis=2)
+            d['pred'] = tf.concat((d['loc_head'], tf.nn.softmax(d['cls_head'], axis=-1)), axis=2)
 
         return d
 
     def _build_loss(self, **kwargs):
         r_alpha = kwargs.pop('r_alpha', 1)
-        conf_loss = focal_loss(self.logits, self.y)
-        regress_loss = smooth_l1_loss(self.logits, self.y)
-        total_loss = conf_loss + r_alpha * regress_loss
+        with tf.variable_scope('losses'):
+            conf_loss = focal_loss(self.logits, self.y)
+            regress_loss = smooth_l1_loss(self.logits, self.y)
+            total_loss = conf_loss + r_alpha * regress_loss
+
+        self.conf_loss = conf_loss
+        self.regress_loss = regress_loss
         return total_loss
 
     # def _build_pred_y(self, **kwargs):

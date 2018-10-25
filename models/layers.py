@@ -34,21 +34,27 @@ def build_head_loc(input, num_anchors, depth=4, name='head_loc'):
         head = conv_layer(head, output_channels, (3, 3), (1, 1))
     return head
 
-def build_head_cls(input, num_anchors, num_clasees, depth=4, prior_probs=0.01, name='head_cls'):
+def build_head_cls(input, num_anchors, num_classes, depth=4, prior_probs=0.01, name='head_cls'):
     head = input
     with tf.variable_scope(name):
         for _ in range(depth):
             head = tf.nn.relu(conv_layer(head, 256, (3, 3), (1, 1)))
-        output_channels = num_anchors * num_clasees
-        head = tf.layers.conv2d(
-            head,
-            filters=output_channels,
-            kernel_size=(3, 3),
-            strides=(1, 1),
-            padding='SAME',
-            use_bias=True,
-            bias_initializer=tf.constant_initializer(-np.log(((1-prior_probs) / prior_probs)))
-            )
+        output_channels = num_anchors * num_classes
+        bias = np.zeros((num_classes, 1, 1), dtype=np.float32)
+        bias[0] = np.log((num_classes - 1) * (1 - prior_probs) / (prior_probs))
+        bias = np.vstack([bias for _ in range(num_anchors)])
+        biases = tf.get_variable('biases', [num_anchors * num_classes], tf.float32,\
+                                tf.constant_initializer(value=bias))
+        # head = tf.layers.conv2d(
+        #     head,
+        #     filters=output_channels,
+        #     kernel_size=(3, 3),
+        #     strides=(1, 1),
+        #     padding='SAME',
+        #     use_bias=True,
+        #     bias_initializer=tf.constant_initializer(-np.log(((1-prior_probs) / prior_probs)))
+        #     )
+        head = conv_layer(head, output_channels, (3, 3), (1, 1), use_bias=False) + biases
     return head
 
 def resize_to_target(input, target):
