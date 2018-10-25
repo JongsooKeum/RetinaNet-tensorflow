@@ -14,8 +14,7 @@ def read_data(data_dir, image_size, no_label=False):
     class_map_path = os.path.join(data_dir, 'classes.json')
     class_map = load_json(class_map_path)
     anchors = anchors_for_shape(image_size)
-    num_classes = len(class_map) + 1
-    # num_classes = len(class_map)
+    num_classes = len(class_map)
     ih, iw = image_size
     im_paths = []
     for ext in IM_EXTENSIONS:
@@ -38,7 +37,7 @@ def read_data(data_dir, image_size, no_label=False):
         if no_label:
             labels.append(0)
             continue
-        # load bboxes and reshape for yolo model
+        # load bboxes and reshape for retina model
         name = os.path.splitext(os.path.basename(im_path))[0]
         anno_path = os.path.join(anno_dir, '{}.anno'.format(name))
         anno = load_json(anno_path)
@@ -54,7 +53,7 @@ def read_data(data_dir, image_size, no_label=False):
             bboxes = np.array(bboxes)
             bboxes = np.array([iw, ih, iw, ih, 1], dtype=np.float32) * bboxes
 
-            b_labels, annotations = anchor_targets_bbox(im.shape, bboxes, num_classes, anchors)
+            b_labels, annotations = anchor_targets_bbox(im.shape, bboxes, num_classes + 1, anchors)
             regression = bbox_transform(anchors, annotations)
             label = np.array(np.append(regression, b_labels, axis=1), dtype=np.float32)
         labels.append(label)
@@ -79,7 +78,7 @@ class DataSet(object):
         """
         Construct a new DataSet object.
         :param images: np.ndarray, shape: (N, H, W, C)
-        :param labels: np.ndarray, shape: (N, g_H, g_W, anchors, 5 + num_classes).
+        :param labels: np.ndarray, shape:
         """
         if labels is not None:
             assert images.shape[0] == labels.shape[0],\
