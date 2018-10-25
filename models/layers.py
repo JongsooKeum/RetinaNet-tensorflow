@@ -4,6 +4,19 @@ import numpy as np
 def conv_layer(x, filters, kernel_size, strides, padding='SAME', use_bias=True):
     return tf.layers.conv2d(x, filters, kernel_size, strides, padding, use_bias=use_bias)
 
+def max_pool(x, side_l, stride, padding='SAME'):
+    """
+    Performs max pooling on given input.
+    :param x: tf.Tensor, shape: (N, H, W, C).
+    :param side_l: int, the side length of the pooling window for each dimension.
+    :param stride: int, the stride of the sliding window for each dimension.
+    :param padding: str, either 'SAME' or 'VALID',
+                         the type of padding algorithm to use.
+    :return: tf.Tensor.
+    """
+    return tf.nn.max_pool(x, ksize=[1, side_l, side_l, 1],
+                          strides=[1, stride, stride, 1], padding=padding)
+
 def batchNormalization(x, is_train):
     """
     Add a new batchNormalization layer.
@@ -45,15 +58,6 @@ def build_head_cls(input, num_anchors, num_classes, depth=4, prior_probs=0.01, n
         bias = np.vstack([bias for _ in range(num_anchors)])
         biases = tf.get_variable('biases', [num_anchors * num_classes], tf.float32,\
                                 tf.constant_initializer(value=bias))
-        # head = tf.layers.conv2d(
-        #     head,
-        #     filters=output_channels,
-        #     kernel_size=(3, 3),
-        #     strides=(1, 1),
-        #     padding='SAME',
-        #     use_bias=True,
-        #     bias_initializer=tf.constant_initializer(-np.log(((1-prior_probs) / prior_probs)))
-        #     )
         head = conv_layer(head, output_channels, (3, 3), (1, 1), use_bias=False) + biases
     return head
 
