@@ -27,7 +27,7 @@ hp_d = dict()
 # FIXME: Training hyperparameters
 hp_d['batch_size'] = 2
 hp_d['num_epochs'] = 50
-hp_d['init_learning_rate'] = 1e-4
+hp_d['init_learning_rate'] = 1e-5
 hp_d['momentum'] = 0.9
 hp_d['learning_rate_patience'] = 10
 hp_d['learning_rate_decay'] = 0.1
