@@ -1,7 +1,15 @@
 import os
+import cv2
 import pickle as pkl
 import numpy as np
 import matplotlib.pyplot as plt
+
+COLORS = [
+    (0, 97, 255), (0, 51, 128), (0, 255, 211), (128, 128, 128), (148, 255, 181), (143, 124, 0),
+    (157, 204, 0), (194, 0, 136), (255, 164, 5), (255, 168, 187),
+    (66, 102, 0), (255, 0, 16), (94, 241, 242), (0, 153, 143), (224, 255, 102),
+    (116, 10, 255), (153, 0, 0), (255, 255, 128), (255, 255, 0), (255, 80, 5)
+]
 
 def plot_learning_curve(exp_idx, step_losses, step_scores, eval_scores=None,
                         mode='max', img_dir='.'):
@@ -33,9 +41,12 @@ def plot_learning_curve(exp_idx, step_losses, step_scores, eval_scores=None,
 
 def get_boxes(boxes, anchors, top_k_num=100, iou_thres=0.5, conf_thres=0.5, gt=True):
     pred_y = boxes
+    is_batch = len(pred_y.shape) == 3
+    if not is_batch:
+        pred_y = np.expand_dims(pred_y, 0)
     regressions = pred_y[:, :, :4]
     regressions = bbox_transform_inv(anchors, regressions)
-    confs = pred_y[:, :, 5:] if gt else pred_y[:, :, 4:]
+    confs = pred_y[:, :, 4:]
 
     if top_k_num:
         tmp_confs = []
@@ -71,7 +82,11 @@ def get_boxes(boxes, anchors, top_k_num=100, iou_thres=0.5, conf_thres=0.5, gt=T
         regressions = np.array(tmp_regressions, dtype=np.float32)
 
     pred_y = np.append(regressions, confs, axis=-1)
-    return pred_y
+
+    if is_batch:
+        return pred_y
+    else:
+        return pred_y[0]
 
 def cal_recall(gt_bboxes, bboxes, iou_thres=0.5):
     p = 0
@@ -175,3 +190,20 @@ def bbox_transform_inv(boxes, deltas, mean=None, std=None):
                            pred_boxes_x2, pred_boxes_y2], axis=2)
 
     return pred_boxes
+
+def draw_pred_boxes(image, pred_boxes, class_map, text=True, score=False):
+    im_h, im_w = image.shape[:2]
+    output = image.copy()
+
+    for box in pred_boxes:
+        overlay = output.copy()
+        class_idx = np.argmax(box[5:])
+        color = COLORS[class_idx]
+        line_width, alpha = (2, 0.8)
+        x_min, x_max = [int(x) for x in [box[0], box[2]]]
+        y_min, y_max = [int(x) for x in [box[1], box[3]]]
+        cv2.rectangle(overlay, (x_min, y_min),
+                      (x_max, y_max), color, line_width)
+        output = cv2.addWeighted(overlay, alpha, output, 1 - alpha, 0)
+
+    return output

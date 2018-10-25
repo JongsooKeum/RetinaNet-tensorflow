@@ -111,7 +111,7 @@ class Optimizer(metaclass=ABCMeta):
                 sess, **kwargs)
             step_losses.append(step_loss)
             # Perform evaluation in the end of each epoch
-            if (i) % num_steps_per_epoch == 0:
+            if (i+1) % num_steps_per_epoch == 0:
                 # Evaluate model with current minibatch, from training set
                 step_score = self.evaluator.score(
                     step_y_true, step_y_pred, self.model, **kwargs)
@@ -122,6 +122,7 @@ class Optimizer(metaclass=ABCMeta):
                     # Evaluate model with the validation set
                     eval_y_pred = self.model.predict(
                         sess, self.val_set, verbose=False, **kwargs)
+                    from IPython import embed; embed();
                     eval_score = self.evaluator.score(
                         self.val_set.labels, eval_y_pred, self.model, **kwargs)
                     eval_scores.append(eval_score)
