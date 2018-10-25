@@ -22,8 +22,7 @@ class DetectNet(metaclass=ABCMeta):
         """
         self.X = tf.placeholder(tf.float32, [None] + input_shape)
         self.is_train = tf.placeholder(tf.bool)
-        self.num_classes = num_classes + 1
-        # self.num_classes = num_classes
+        self.num_classes = num_classes
         self.d = self._build_model(**kwargs)
         self.logits = self.d['logits']
         self.pred = self.d['pred']
@@ -118,39 +117,39 @@ class RetinaNet(DetectNet):
 
         with tf.variable_scope('layer5'):
             d['s_5'] = conv_layer(convs[0], 256, (1, 1), (1, 1))
-            d['cls_head5'] = build_head_cls(d['s_5'], num_anchors, num_classes)
+            d['cls_head5'] = build_head_cls(d['s_5'], num_anchors, num_classes + 1)
             d['loc_head5'] = build_head_loc(d['s_5'], num_anchors)
-            d['flat_cls_head5'] = tf.reshape(d['cls_head5'], (tf.shape(d['cls_head5'])[0], -1, num_classes))
+            d['flat_cls_head5'] = tf.reshape(d['cls_head5'], (tf.shape(d['cls_head5'])[0], -1, num_classes + 1))
             d['flat_loc_head5'] = tf.reshape(d['loc_head5'], (tf.shape(d['loc_head5'])[0], -1, 4))
 
         with tf.variable_scope('layer6'):
             d['s_6'] = conv_layer(d['s_5'], 256, (3, 3), (2, 2))
-            d['cls_head6'] = build_head_cls(d['s_6'], num_anchors, num_classes)
+            d['cls_head6'] = build_head_cls(d['s_6'], num_anchors, num_classes + 1)
             d['loc_head6'] = build_head_loc(d['s_6'], num_anchors)
-            d['flat_cls_head6'] = tf.reshape(d['cls_head6'], (tf.shape(d['cls_head6'])[0], -1, num_classes))
+            d['flat_cls_head6'] = tf.reshape(d['cls_head6'], (tf.shape(d['cls_head6'])[0], -1, num_classes + 1))
             d['flat_loc_head6'] = tf.reshape(d['loc_head6'], (tf.shape(d['loc_head6'])[0], -1, 4))
 
         with tf.variable_scope('layer7'):
             d['s_7'] = conv_layer(tf.nn.relu(d['s_6']), 256, (3, 3), (2, 2))
-            d['cls_head7'] = build_head_cls(d['s_7'], num_anchors, num_classes)
+            d['cls_head7'] = build_head_cls(d['s_7'], num_anchors, num_classes + 1)
             d['loc_head7'] = build_head_loc(d['s_7'], num_anchors)
-            d['flat_cls_head7'] = tf.reshape(d['cls_head7'], (tf.shape(d['cls_head7'])[0], -1, num_classes))
+            d['flat_cls_head7'] = tf.reshape(d['cls_head7'], (tf.shape(d['cls_head7'])[0], -1, num_classes + 1))
             d['flat_loc_head7'] = tf.reshape(d['loc_head7'], (tf.shape(d['loc_head7'])[0], -1, 4))
 
         with tf.variable_scope('layer4'):
             d['up4'] = resize_to_target(d['s_5'], convs[1])
             d['s_4'] = conv_layer(convs[1], 256, (1, 1), (1, 1)) + d['up4']
-            d['cls_head4'] = build_head_cls(d['s_4'], num_anchors, num_classes)
+            d['cls_head4'] = build_head_cls(d['s_4'], num_anchors, num_classes + 1)
             d['loc_head4'] = build_head_loc(d['s_4'], num_anchors)
-            d['flat_cls_head4'] = tf.reshape(d['cls_head4'], (tf.shape(d['cls_head4'])[0], -1, num_classes))
+            d['flat_cls_head4'] = tf.reshape(d['cls_head4'], (tf.shape(d['cls_head4'])[0], -1, num_classes + 1))
             d['flat_loc_head4'] = tf.reshape(d['loc_head4'], (tf.shape(d['loc_head4'])[0], -1, 4))
 
         with tf.variable_scope('layer3'):
             d['up3'] = resize_to_target(d['s_4'], convs[2])
             d['s_3'] = conv_layer(convs[2], 256, (1, 1), (1, 1)) + d['up3']
-            d['cls_head3'] = build_head_cls(d['s_3'], num_anchors, num_classes)
+            d['cls_head3'] = build_head_cls(d['s_3'], num_anchors, num_classes + 1)
             d['loc_head3'] = build_head_loc(d['s_3'], num_anchors)
-            d['flat_cls_head3'] = tf.reshape(d['cls_head3'], (tf.shape(d['cls_head3'])[0], -1, num_classes))
+            d['flat_cls_head3'] = tf.reshape(d['cls_head3'], (tf.shape(d['cls_head3'])[0], -1, num_classes + 1))
             d['flat_loc_head3'] = tf.reshape(d['loc_head3'], (tf.shape(d['loc_head3'])[0], -1, 4))
 
         with tf.variable_scope('head'):
