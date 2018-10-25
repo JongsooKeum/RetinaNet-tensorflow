@@ -122,7 +122,6 @@ class Optimizer(metaclass=ABCMeta):
                     # Evaluate model with the validation set
                     eval_y_pred = self.model.predict(
                         sess, self.val_set, verbose=False, **kwargs)
-                    from IPython import embed; embed();
                     eval_score = self.evaluator.score(
                         self.val_set.labels, eval_y_pred, self.model, **kwargs)
                     eval_scores.append(eval_score)

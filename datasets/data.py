@@ -15,6 +15,7 @@ def read_data(data_dir, image_size, no_label=False):
     class_map = load_json(class_map_path)
     anchors = anchors_for_shape(image_size)
     num_classes = len(class_map) + 1
+    # num_classes = len(class_map)
     ih, iw = image_size
     im_paths = []
     for ext in IM_EXTENSIONS:
