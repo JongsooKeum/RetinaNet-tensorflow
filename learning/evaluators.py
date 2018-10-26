@@ -23,7 +23,7 @@ class Evaluator(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def score(self, y_true, y_pred):
+    def score(self, y_true, y_pred, model):
         """
         Performance metric for a given prediction.
         This should be implemented.

@@ -2,8 +2,6 @@ import os
 import time
 from abc import abstractmethod, ABCMeta
 import tensorflow as tf
-from learning.utils import plot_learning_curve
-
 
 class Optimizer(metaclass=ABCMeta):
     """Base class for gradient-based optimization algorithms."""
@@ -31,7 +29,6 @@ class Optimizer(metaclass=ABCMeta):
         self.init_learning_rate = kwargs.pop('init_learning_rate', 0.001)
         self.learning_rate_placeholder = tf.placeholder(tf.float32)
         self.optimize = self._optimize_op()
-
         self._writer_prep()
         self._reset()
 
@@ -89,10 +86,11 @@ class Optimizer(metaclass=ABCMeta):
                 - nms_flag: bool, whether to do non maximum supression(nms) for evaluation.
         :return train_results: dict, containing detailed results of training.
         """
-        pretrain = kwargs.pop('pretrain', False)
+        num_eval = kwargs.pop('num_eval', 128)
         saver = tf.train.Saver()
         sess.run(tf.global_variables_initializer())  # initialize all weights
-        if pretrain:
+        if 'init_fn' in self.model.d.keys():
+            print('Load pretrained weights...')
             self.model.d['init_fn'](sess)
         train_results = dict()
         train_size = self.train_set.num_examples
@@ -105,8 +103,8 @@ class Optimizer(metaclass=ABCMeta):
         step_losses, step_scores, eval_scores = [], [], []
         start_time = time.time()
 
-        train_writer = tf.summary.FileWriter(os.path.join(save_dir, 'train'), sess.graph)
-        val_writer = tf.summary.FileWriter(os.path.join(save_dir, 'val'), sess.graph)
+        train_writer = tf.summary.FileWriter(os.path.join(save_dir, 'log/train'), sess.graph)
+        val_writer = tf.summary.FileWriter(os.path.join(save_dir, 'log/val'), sess.graph)
 
         # Start training loop
         for i in range(num_steps):
@@ -114,13 +112,17 @@ class Optimizer(metaclass=ABCMeta):
             step_loss, step_y_true, step_y_pred, step_X = self._step(
                 sess, **kwargs)
             step_losses.append(step_loss)
+            train_loss_sumamry = sess.run(self.summary_loss, feed_dict={self.loss_tf: step_loss})
+            train_writer.add_summary(train_loss_sumamry, i)
             # Perform evaluation in the end of each epoch
-            if (i+1) % num_steps_per_epoch == 0:
+            if (i+1) % num_eval == 0:
                 # Evaluate model with current minibatch, from training set
                 step_score = self.evaluator.score(
                     step_y_true, step_y_pred, self.model, **kwargs)
                 step_scores.append(step_score)
-
+                train_score_sumamry = sess.run(self.summary_score, feed_dict={self.score_tf: step_score})
+                train_writer.add_summary(train_score_sumamry, i)
+                train_writer.flush()
                 # If validation set is initially given, use if for evaluation
                 if self.val_set is not None:
                     # Evaluate model with the validation set
@@ -129,16 +131,13 @@ class Optimizer(metaclass=ABCMeta):
                     eval_score = self.evaluator.score(
                         self.val_set.labels, eval_y_pred, self.model, **kwargs)
                     eval_scores.append(eval_score)
-
+                    val_score_sumamry = sess.run(self.summary_score, feed_dict={self.score_tf: eval_score})
+                    val_writer.add_summary(val_score_sumamry, i)
+                    val_writer.flush()
                     if verbose:
                         # Print intermediate results
                         print('[epoch {}]\tloss: {:.6f} |Train score: {:.6f} |Eval score: {:.6f} |lr: {:.6f}'
                               .format(self.curr_epoch, step_loss, step_score, eval_score, self.curr_learning_rate))
-                        # Plot intermediate results
-                        # plot_learning_curve(-1, step_losses, step_scores, eval_scores=eval_scores,
-                        # mode=self.evaluator.mode, img_dir=save_dir)
-                        plot_learning_curve(-1, step_losses, eval_scores, eval_scores=None,
-                                            mode=self.evaluator.mode, img_dir=save_dir)
 
                     curr_score = eval_score
                 else:
@@ -146,19 +145,17 @@ class Optimizer(metaclass=ABCMeta):
                         # Print intermediate results
                         print('[epoch {}]\tloss: {:.6f} |Train score: {:.6f} |lr: {:.6f}'
                               .format(self.curr_epoch, step_loss, step_score, self.curr_learning_rate))
-                        # Plot intermediate results
-                        plot_learning_curve(-1, step_losses, step_scores, eval_scores=None,
-                                            mode=self.evaluator.mode, img_dir=save_dir)
 
                     curr_score = step_score
+                if self.evaluator.is_better(curr_score, self.bset_score, **kwargs):
+                    self.best_score = curr_score
+                    saver.save(sess, os.path.join(save_dir, 'model.ckpt'))
 
                 # Keep track of the current best model,
                 # by comparing current score and the best score
-
+            if (i+1) % num_steps_per_epoch == 0:
                 if self.evaluator.is_better(curr_score, self.best_score, **kwargs):
-                    self.best_score = curr_score
                     self.num_bad_epochs = 0
-                    saver.save(sess, os.path.join(save_dir, 'model.ckpt'))
                 else:
                     self.num_bad_epochs += 1
 
@@ -183,10 +180,10 @@ class Optimizer(metaclass=ABCMeta):
             return train_results
 
     def _writer_prep(self):
-        metric_tf = tf.placeholder(tf.float32)
-        tf.summary.scalar('cost', self.model.loss)
-        tf.summary.scalar('metric', metric_tf)
-        self.merged = tf.summary.merge_all()
+        self.score_tf = tf.placeholder(tf.float32)
+        self.loss_tf = tf.placeholder(tf.float32)
+        self.summary_loss = tf.summary.merge([tf.summary.scalar('cost', self.loss_tf)])
+        self.summary_score = tf.summary.merge([tf.summary.scalar('score', self.score_tf)])
 
 
 class MomentumOptimizer(Optimizer):
