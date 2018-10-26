@@ -32,6 +32,7 @@ class Optimizer(metaclass=ABCMeta):
         self.learning_rate_placeholder = tf.placeholder(tf.float32)
         self.optimize = self._optimize_op()
 
+        self._writer_prep()
         self._reset()
 
     def _reset(self):
@@ -103,6 +104,9 @@ class Optimizer(metaclass=ABCMeta):
 
         step_losses, step_scores, eval_scores = [], [], []
         start_time = time.time()
+
+        train_writer = tf.summary.FileWriter(os.path.join(save_dir, 'train'), sess.graph)
+        val_writer = tf.summary.FileWriter(os.path.join(save_dir, 'val'), sess.graph)
 
         # Start training loop
         for i in range(num_steps):
@@ -177,6 +181,12 @@ class Optimizer(metaclass=ABCMeta):
                 train_results['eval_scores'] = eval_scores
 
             return train_results
+
+    def _writer_prep(self):
+        metric_tf = tf.placeholder(tf.float32)
+        tf.summary.scalar('cost', self.model.loss)
+        tf.summary.scalar('metric', metric_tf)
+        self.merged = tf.summary.merge_all()
 
 
 class MomentumOptimizer(Optimizer):
