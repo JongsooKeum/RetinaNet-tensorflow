@@ -2,7 +2,7 @@ import os
 import numpy as np
 import tensorflow as tf
 from datasets import data as dataset
-from models.nn import RetinaNet as ConvNet
+from models.retina import RetinaNet as ConvNet
 from learning.evaluators import RecallEvaluator as Evaluator
 from learning.utils import get_boxes, cal_recall, draw_pred_boxes
 import cv2
