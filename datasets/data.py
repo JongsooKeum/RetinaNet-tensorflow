@@ -115,7 +115,6 @@ class DataSet(object):
         :return: batch_images: np.ndarray, shape: (N, H, W, C)
                  batch_labels: np.ndarray, shape: (N, g_H, g_W, anchors, 5 + num_classes)
         """
-
         if shuffle:
             indices = np.random.choice(self._num_examples, batch_size)
         else:
