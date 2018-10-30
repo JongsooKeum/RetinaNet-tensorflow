@@ -38,8 +38,8 @@ def conv_bn_relu(x, filters, kernel_size, is_train, strides=(1, 1), padding='SAM
     else:
         return bn
 
-def build_head_loc(input, num_anchors, depth=4, name='head_loc'):
-    head = input
+def build_head_loc(x, num_anchors, depth=4, name='head_loc'):
+    head = x
     with tf.variable_scope(name):
         for _ in range(depth):
             head = tf.nn.relu(conv_layer(head, 256, (3, 3), (1, 1)))
@@ -47,8 +47,8 @@ def build_head_loc(input, num_anchors, depth=4, name='head_loc'):
         head = conv_layer(head, output_channels, (3, 3), (1, 1))
     return head
 
-def build_head_cls(input, num_anchors, num_classes, depth=4, prior_probs=0.01, name='head_cls'):
-    head = input
+def build_head_cls(x, num_anchors, num_classes, depth=4, prior_probs=0.01, name='head_cls'):
+    head = x
     with tf.variable_scope(name):
         for _ in range(depth):
             head = tf.nn.relu(conv_layer(head, 256, (3, 3), (1, 1)))
@@ -61,10 +61,10 @@ def build_head_cls(input, num_anchors, num_classes, depth=4, prior_probs=0.01, n
         head = conv_layer(head, output_channels, (3, 3), (1, 1), use_bias=False) + biases
     return head
 
-def resize_to_target(input, target):
+def resize_to_target(x, target):
     size = (tf.shape(target)[1], tf.shape(target)[2])
-    x = tf.image.resize_bilinear(input, size)
-    return tf.cast(x, input.dtype)
+    x = tf.image.resize_bilinear(x, size)
+    return tf.cast(x, x.dtype)
 
 def residual(x, input_channels, output_channels, is_train, strides=(1, 1), name='residual_block', st=True):
     """

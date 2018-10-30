@@ -9,6 +9,13 @@ IM_EXTENSIONS = ['png', 'jpg', 'bmp']
 
 def read_data(data_dir, image_size, no_label=False):
     """
+    Load the data and preprocessing for RetinaNet detector
+    :param data_dir: str, path to the directory to read.
+                     It should include class_map, annotations
+    :image_size: tuple, image size for resizing images
+    :no_label: bool, whetehr to load labels
+    :return: X_set: np.ndarray, shape: (N, H, W, C).
+             y_set: np.ndarray, shape: (N, N_box, 5+num_classes).
     """
     im_dir = os.path.join(data_dir, 'images')
     class_map_path = os.path.join(data_dir, 'classes.json')
