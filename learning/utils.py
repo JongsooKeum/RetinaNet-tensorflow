@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 
-def get_boxes(boxes, anchors, top_k_num=100, iou_thres=0.5, conf_thres=0.5, gt=True):
+def get_boxes(boxes, anchors, top_k_num=100, iou_thres=0.5, conf_thres=0.5):
     pred_y = boxes
     is_batch = len(pred_y.shape) == 3
     if not is_batch:

@@ -59,7 +59,7 @@ class RecallEvaluator(Evaluator):
 
     def score(self, y_true, y_pred, model, **kwargs):
         """Compute Recall for a given predicted bboxes"""
-        bboxes = get_boxes(y_pred, model.anchors, gt=False)
+        bboxes = get_boxes(y_pred, model.anchors)
         gt_bboxes = get_boxes(y_true, model.anchors)
         score = cal_recall(gt_bboxes, bboxes)
         return score
