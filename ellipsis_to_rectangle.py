@@ -13,7 +13,7 @@ img_dir = 'data/face/originalPics/'
 dest_img_dir = 'data/face/images/'
 dest_anno_dir = 'data/face/annotations/'
 
-def _main(cfg):
+def _main():
     if not os.path.isdir(dest_img_dir):
         os.mkdir(dest_img_dir)
     if not os.path.isdir(dest_anno_dir):
