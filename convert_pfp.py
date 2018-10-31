@@ -7,8 +7,8 @@ import re
 
 
 # FIXME
-SRC_IMG_DIR = '/home/jongho/data/PennFudanPed/PNGImages'
-SRC_ANNO_DIR = '/home/jongho/data/PennFudanPed/Annotation'
+SRC_IMG_DIR = './data/PennFudanPed/PNGImages'
+SRC_ANNO_DIR = './data/PennFudanPed/Annotation'
 
 # FIXME
 DST_ROOT_DIR = 'PennFudanPed_converted'
@@ -63,6 +63,7 @@ def main(verbose=False):
     os.makedirs(dst_img_dir)
     os.makedirs(dst_anno_dir)
 
+    class_map = set()
     for txt_fpath, anno_dict in zip(tqdm(txt_fpaths), anno_dicts):
         sample_name = osp.splitext(osp.basename(txt_fpath))[0]
 
@@ -70,6 +71,8 @@ def main(verbose=False):
         with open(osp.join(dst_anno_dir, '{}.anno'.format(sample_name)), 'w') as f:
             json.dump(anno_dict, f, indent='\t')
 
+        for ano_class in anno_dict:
+            class_map.add(ano_class)
         # Copy the image files from the source directory.
         cmd = 'cp {} {}'.format(
             osp.join(SRC_IMG_DIR, '{}.png'.format(sample_name)),
@@ -77,6 +80,12 @@ def main(verbose=False):
         )
         os.system(cmd)
 
+    cls_map = dict()
+    k = 0
+    for i in class_map:
+        cls_map[str(k)] = i
+    with open(osp.join(DST_ROOT_DIR, 'classes.json'), 'w') as f:
+        json.dump(cls_map, f, indent='\t')
 
 if __name__ == '__main__':
     main(verbose=True)
