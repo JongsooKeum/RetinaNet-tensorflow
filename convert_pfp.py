@@ -4,6 +4,7 @@ import os
 import os.path as osp
 import json
 import re
+from shutil import copy2
 
 
 # FIXME
@@ -74,12 +75,16 @@ def main(verbose=False):
         for ano_class in anno_dict:
             class_map.add(ano_class)
         # Copy the image files from the source directory.
+        src_path = osp.join(SRC_IMG_DIR, '{}.png'.format(sample_name))
+        dst_path = osp.join(dst_img_dir, '{}.png'.format(sample_name))
+        copy2(src_path, dst_path)
+        """
         cmd = 'cp {} {}'.format(
             osp.join(SRC_IMG_DIR, '{}.png'.format(sample_name)),
             osp.join(dst_img_dir, '{}.png'.format(sample_name))
         )
         os.system(cmd)
-
+        """
     cls_map = dict()
     k = 0
     for i in class_map:
