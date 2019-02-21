@@ -35,7 +35,7 @@ hp_d['eps'] = 1e-8
 hp_d['score_threshold'] = 1e-4
 hp_d['nms_flag'] = True
 hp_d['frontend'] = 'resnet_v2_50'
-hp_d['pretrain'] = False
+hp_d['pretrain'] = True
 
 """ 3. Build graph, initialize a session and start training """
 graph = tf.get_default_graph()
