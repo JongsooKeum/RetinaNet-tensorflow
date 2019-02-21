@@ -12,12 +12,12 @@ import time
 
 """ 1. Load dataset """
 root_dir = os.path.join('data/face')
-test_dir = os.path.join(root_dir, 'test')
-IM_SIZE = (512, 512)
+test_dir = os.path.join(root_dir, 'draw')
+IM_SIZE = (544, 960)
 NUM_CLASSES = 1
 
 # Load test set
-X_test, y_test = dataset.read_data(test_dir, IM_SIZE)
+X_test, y_test = dataset.read_data(test_dir, IM_SIZE, no_label=True)
 test_set = dataset.DataSet(X_test, y_test)
 
 """ 2. Set test hyperparameters """
@@ -43,9 +43,7 @@ saver.restore(sess, './model.ckpt')
 start_time = time.time()
 test_y_pred = model.predict(sess, test_set, **hp_d)
 end_time = time.time()
-test_score = evaluator.score(test_set.labels, test_y_pred, model, **hp_d)
 
-print('Test performance: {}'.format(test_score))
 print('Takt time: {}'.format((end_time - start_time) * 1000 / len(y_test)))
 
 """ 4. Draw boxes on image """

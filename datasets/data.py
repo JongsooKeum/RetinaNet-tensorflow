@@ -3,7 +3,7 @@ import numpy as np
 from cv2 import imread, resize
 import glob
 import json
-from datasets.utils import augment, anchor_targets_bbox, bbox_transform, padding, anchors_for_shape
+from datasets.utils import anchor_targets_bbox, bbox_transform, padding, anchors_for_shape
 
 IM_EXTENSIONS = ['png', 'jpg', 'bmp']
 

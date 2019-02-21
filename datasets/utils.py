@@ -69,7 +69,6 @@ def anchor_targets_bbox(
     indices = np.logical_or(anchors_centers[:, 0] >= mask_shape[
                             1], anchors[:, 1] >= mask_shape[0])
     labels[indices, :] = -1
-
     return labels, annotations
 
 

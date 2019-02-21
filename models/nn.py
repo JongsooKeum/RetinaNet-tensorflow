@@ -65,7 +65,6 @@ class DetectNet(metaclass=ABCMeta):
             else:
                 _batch_size = batch_size
             X, _ = dataset.next_batch(_batch_size, shuffle=False)
-
             # Compute predictions
             y_pred = sess.run(self.pred_y, feed_dict={
                               self.X: X, self.is_train: False})

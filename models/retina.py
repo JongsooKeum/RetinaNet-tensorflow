@@ -1,6 +1,7 @@
 import os
 import tensorflow as tf
 from tensorflow.contrib.slim.nets import resnet_v2 as resnet_v2
+from nets.mobilenet import mobilenet_v2
 from datasets.utils import anchors_for_shape
 from models.layers import build_head_cls, build_head_loc, conv_layer, resize_to_target
 from models.utils import smooth_l1_loss, focal_loss, bbox_transform_inv
@@ -21,17 +22,24 @@ class RetinaNet(DetectNet):
     def _build_model(self, **kwargs):
         d = dict()
         num_classes = self.num_classes
-        pretrain = kwargs.pop('pretrain', True)
         frontend = kwargs.pop('frontend', 'resnet_v2_50')
         num_anchors = kwargs.pop('num_anchors', 9)
 
-        if pretrain:
+        if 'resnet_v2' in frontend:
+            d['feature_map'] = self.X - [[[123.68, 116.779, 103.939]]]
             frontend_dir = os.path.join('pretrained_models', '{}.ckpt'.format(frontend))
             with slim.arg_scope(resnet_v2.resnet_arg_scope()):
-                logits, end_points = resnet_v2.resnet_v2_50(self.X, is_training=self.is_train)
+                logits, end_points = resnet_v2.resnet_v2_50(d['feature_map'], is_training=self.is_train)
                 d['init_fn'] = slim.assign_from_checkpoint_fn(model_path=frontend_dir,
                                                           var_list=slim.get_model_variables(frontend))
             convs = [end_points[frontend + '/block{}'.format(x)] for x in [4, 2, 1]]
+        elif 'mobilenet_v2' in frontend:
+            d['feature_map'] = (2.0 / 255.0) * self.X  - 1.0
+            frontend_dir = os.path.join('pretrained_models', 'mobilenet_v2_1.4_224', '{}.ckpt'.format(frontend))
+            with slim.arg_scope(mobilenet_v2.training_scope()):
+                _, end_points = mobilenet_v2.mobilenet_base(d['feature_map'], is_training=self.is_train)
+
+            convs = [end_points[x] for x in ['layer_19', 'layer_14', 'layer_7']]
         else:
             #TODO build convNet
             raise NotImplementedError("Build own convNet!")
